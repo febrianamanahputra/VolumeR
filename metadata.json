@@ -1,0 +1,8 @@
+{
+  "name": "Kalkulator Volume Konstruksi",
+  "description": "Aplikasi kalkulator untuk menghitung volume pekerjaan konstruksi dengan fitur riwayat perhitungan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
