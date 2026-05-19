@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { 
   Calculator, 
   Save, 
@@ -12,7 +14,8 @@ import {
   FileSpreadsheet,
   Download,
   Plus,
-  X
+  X,
+  FileText
 } from 'lucide-react';
 
 const DEFAULT_ITEMS = [
@@ -91,6 +94,7 @@ export default function App() {
   const [inputRows, setInputRows] = useState<InputRow[]>([{ id: crypto.randomUUID(), panjang: '', lebar: '', tinggi: '' }]);
   const [history, setHistory] = useState<CalculationRecord[]>([]);
   const [filterItem, setFilterItem] = useState<string>('All');
+  const [pekanKe, setPekanKe] = useState<string>('');
 
   useEffect(() => {
     const saved = localStorage.getItem('calc_history');
@@ -413,6 +417,112 @@ export default function App() {
     saveAs(new Blob([buffer]), 'riwayat_kalkulator_konstruksi.xlsx');
   };
 
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    
+    // Title
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text("Backup Volume", 14, 20);
+    
+    // Subtitle
+    if (pekanKe) {
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(100);
+      doc.text(`Backup Volume Pekan Ke ${pekanKe}`, 14, 28);
+    }
+    
+    const tableData: any[][] = [];
+    
+    filteredHistory.forEach(record => {
+      const dateStr = new Date(record.timestamp).toLocaleString('id-ID', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      
+      if (record.rows && record.rows.length > 0) {
+        record.rows.forEach((r, idx) => {
+          tableData.push([
+            idx === 0 ? dateStr : '',
+            idx === 0 ? record.item : '',
+            r.panjang || '-',
+            r.lebar || '-',
+            r.tinggi || '-',
+            r.rowVolume ? `${r.rowVolume.toLocaleString('id-ID', { maximumFractionDigits: 4 })} ${r.unit || 'm³'}` : ''
+          ]);
+        });
+        
+        if (record.rows.length > 1) {
+             tableData.push([
+              '', '', '', '', 'Total:', `${record.volume.toLocaleString('id-ID', { maximumFractionDigits: 4 })} ${record.unit || 'm³'}`
+             ]);
+        }
+      } else {
+        tableData.push([
+          dateStr,
+          record.item,
+          record.panjang || '-',
+          record.lebar || '-',
+          record.tinggi || '-',
+          record.volume.toLocaleString('id-ID', { maximumFractionDigits: 4 }) + ` ${record.unit || 'm³'}`
+        ]);
+      }
+    });
+
+    const uniqueUnits = Array.from(new Set(filteredHistory.map(r => r.unit || 'm³')));
+    const totalUnit = uniqueUnits.length === 1 && uniqueUnits[0] !== '-' ? uniqueUnits[0] : '';
+    
+    tableData.push([
+      `Total Keseluruhan (${filterItem === 'All' ? 'Semua Item' : 'Item Terpilih'}):`, 
+      '', '', '', '', 
+      `${totalVolume.toLocaleString('id-ID', { maximumFractionDigits: 4 })} ${totalUnit}`.trim()
+    ]);
+
+    autoTable(doc, {
+      startY: pekanKe ? 35 : 28,
+      head: [['Tanggal', 'Item Pekerjaan', 'Panjang (m)', 'Lebar (m)', 'Tinggi (m)', 'Hasil']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [79, 70, 229], // indigo-600
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        halign: 'center',
+        valign: 'middle'
+      },
+      styles: {
+        fontSize: 9,
+        font: 'helvetica',
+        cellPadding: 3,
+      },
+      columnStyles: {
+        0: { cellWidth: 30 },
+        1: { cellWidth: 'auto' },
+        2: { cellWidth: 22, halign: 'right' },
+        3: { cellWidth: 22, halign: 'right' },
+        4: { cellWidth: 22, halign: 'right' },
+        5: { cellWidth: 25, halign: 'right', fontStyle: 'bold' }
+      },
+      didParseCell: function (data) {
+        const rows = data.table.body;
+        if (data.row.index === rows.length - 1) {
+          data.cell.styles.fillColor = [219, 234, 254]; // blue-100
+          data.cell.styles.textColor = [29, 78, 216]; // blue-800
+          data.cell.styles.fontStyle = 'bold';
+          if (data.column.index === 0) {
+            data.cell.colSpan = 5;
+            data.cell.styles.halign = 'right';
+          }
+        } else if (data.cell.text && data.cell.text.length && data.cell.text[0] === 'Total:') {
+          if (data.column.index >= 4) {
+            data.cell.styles.fillColor = [240, 246, 255]; 
+            data.cell.styles.fontStyle = 'bold';
+          }
+        }
+      }
+    });
+
+    doc.save(`Backup_Volume_${pekanKe ? `Pekan_${pekanKe}` : 'Semua'}.pdf`);
+  };
+
   const renderInputDisplay = (evalResult: { value: number; error: boolean; empty: boolean }) => {
     if (evalResult.empty) return null;
     if (evalResult.error) return <span className="text-rose-500 text-[10px] mt-1 block">Format tidak valid</span>;
@@ -615,10 +725,17 @@ export default function App() {
               </h2>
               
               <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Pekan Ke..."
+                  value={pekanKe}
+                  onChange={(e) => setPekanKe(e.target.value)}
+                  className="bg-white border border-neutral-300 text-neutral-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2 transition-colors w-24"
+                />
                 <select
                   value={filterItem}
                   onChange={(e) => setFilterItem(e.target.value)}
-                  className="bg-white border border-neutral-300 text-neutral-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 transition-colors min-w-[200px]"
+                  className="bg-white border border-neutral-300 text-neutral-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 transition-colors min-w-[180px]"
                 >
                   <option value="All">Semua Item Pekerjaan</option>
                   {allItems.map((item, idx) => (
@@ -633,6 +750,16 @@ export default function App() {
                   >
                     <Download className="w-4 h-4" />
                     Excel
+                  </button>
+                )}
+
+                {filteredHistory.length > 0 && (
+                  <button 
+                    onClick={exportToPDF}
+                    className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors"
+                  >
+                    <FileText className="w-4 h-4" />
+                    PDF
                   </button>
                 )}
 
