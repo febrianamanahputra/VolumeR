@@ -361,35 +361,9 @@ export default function App() {
     worksheet.addRow([]);
     currentRow++;
 
-    const uniqueUnits = Array.from(new Set(filteredHistory.map(r => r.unit || 'm³')));
-    const totalUnit = uniqueUnits.length === 1 && uniqueUnits[0] !== '-' ? uniqueUnits[0] : '';
-    
-    // Add Grand Total
-    const grandTotalRowNumber = currentRow;
-    const grandTotalRow = worksheet.addRow({
-      tanggal: `Total Keseluruhan (${filterItem === 'All' ? 'Semua Item' : 'Item Terpilih'}):`,
-      item: '',
-      panjang: '',
-      lebar: '',
-      tinggi: '',
-      volume: `${totalVolume.toLocaleString('id-ID', { maximumFractionDigits: 4 })} ${totalUnit}`.trim()
-    });
-    
-    grandTotalRow.font = { bold: true, color: { argb: 'FF1D4ED8' } };
-    
-    // Style grand total cells
-    grandTotalRow.eachCell({ includeEmpty: true }, (cell) => {
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } };
-      cell.alignment = { vertical: 'middle' };
-    });
-    
-    worksheet.mergeCells(`A${grandTotalRowNumber}:E${grandTotalRowNumber}`);
-    grandTotalRow.getCell(1).alignment = { horizontal: 'right', vertical: 'middle' };
-    grandTotalRow.getCell(6).alignment = { horizontal: 'right', vertical: 'middle' };
-
     // Apply borders
     worksheet.eachRow((row, rowNumber) => {
-      if (rowNumber > 1 && rowNumber < grandTotalRowNumber - 1) { // Apply borders to data rows
+      if (rowNumber > 1) { // Apply borders to data rows
         row.eachCell({ includeEmpty: true }, (cell) => {
           cell.border = {
             top: {style:'thin', color: {argb: 'FFD4D4D8'}},
@@ -398,18 +372,6 @@ export default function App() {
             right: {style:'thin', color: {argb: 'FFD4D4D8'}}
           };
         });
-      }
-    });
-    
-    // Border for max total
-    grandTotalRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-      if (colNumber <= 6) {
-        cell.border = {
-          top: {style:'medium', color: {argb: 'FF1D4ED8'}},
-          left: {style:'medium', color: {argb: 'FF1D4ED8'}},
-          bottom: {style:'medium', color: {argb: 'FF1D4ED8'}},
-          right: {style:'medium', color: {argb: 'FF1D4ED8'}}
-        };
       }
     });
 
@@ -467,53 +429,41 @@ export default function App() {
       }
     });
 
-    const uniqueUnits = Array.from(new Set(filteredHistory.map(r => r.unit || 'm³')));
-    const totalUnit = uniqueUnits.length === 1 && uniqueUnits[0] !== '-' ? uniqueUnits[0] : '';
-    
-    tableData.push([
-      `Total Keseluruhan (${filterItem === 'All' ? 'Semua Item' : 'Item Terpilih'}):`, 
-      '', '', '', '', 
-      `${totalVolume.toLocaleString('id-ID', { maximumFractionDigits: 4 })} ${totalUnit}`.trim()
-    ]);
-
     autoTable(doc, {
       startY: pekanKe ? 35 : 28,
       head: [['Tanggal', 'Item Pekerjaan', 'Panjang (m)', 'Lebar (m)', 'Tinggi (m)', 'Hasil']],
       body: tableData,
-      theme: 'grid',
+      theme: 'striped',
       headStyles: {
-        fillColor: [79, 70, 229], // indigo-600
+        fillColor: [16, 185, 129], // emerald-500
         textColor: [255, 255, 255],
         fontStyle: 'bold',
         halign: 'center',
         valign: 'middle'
       },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252] // slate-50
+      },
       styles: {
         fontSize: 9,
         font: 'helvetica',
-        cellPadding: 3,
+        cellPadding: 4,
+        textColor: [71, 85, 105], // slate-600
+        lineWidth: 0, // No borders
       },
       columnStyles: {
-        0: { cellWidth: 30 },
+        0: { cellWidth: 32 },
         1: { cellWidth: 'auto' },
         2: { cellWidth: 22, halign: 'right' },
         3: { cellWidth: 22, halign: 'right' },
         4: { cellWidth: 22, halign: 'right' },
-        5: { cellWidth: 25, halign: 'right', fontStyle: 'bold' }
+        5: { cellWidth: 30, halign: 'right', fontStyle: 'bold', textColor: [15, 118, 110] } // teal-700
       },
       didParseCell: function (data) {
-        const rows = data.table.body;
-        if (data.row.index === rows.length - 1) {
-          data.cell.styles.fillColor = [219, 234, 254]; // blue-100
-          data.cell.styles.textColor = [29, 78, 216]; // blue-800
-          data.cell.styles.fontStyle = 'bold';
-          if (data.column.index === 0) {
-            data.cell.colSpan = 5;
-            data.cell.styles.halign = 'right';
-          }
-        } else if (data.cell.text && data.cell.text.length && data.cell.text[0] === 'Total:') {
+        if (data.cell.text && data.cell.text.length && data.cell.text[0] === 'Total:') {
           if (data.column.index >= 4) {
-            data.cell.styles.fillColor = [240, 246, 255]; 
+            data.cell.styles.fillColor = [236, 253, 245]; // emerald-50
+            data.cell.styles.textColor = [6, 95, 70]; // emerald-800
             data.cell.styles.fontStyle = 'bold';
           }
         }
@@ -864,21 +814,6 @@ export default function App() {
                       </div>
                     ))}
                   </div>
-
-                  {(() => {
-                    const uniqueUnits = Array.from(new Set(filteredHistory.map(r => r.unit || 'm³')));
-                    const totalUnit = uniqueUnits.length === 1 && uniqueUnits[0] !== '-' ? uniqueUnits[0] : '';
-                    return (
-                      <div className="mt-4 flex flex-col sm:flex-row justify-between items-center bg-emerald-500/15 backdrop-blur-md border border-emerald-500/20 rounded-xl px-6 py-4 text-emerald-950 shadow-sm sticky bottom-0">
-                        <div className="text-sm font-semibold mb-2 sm:mb-0">
-                          Total Keseluruhan ({filterItem === 'All' ? 'Semua Item' : 'Item Terpilih'})
-                        </div>
-                        <div className="text-xl font-bold bg-white/50 px-4 py-1.5 rounded-lg border border-white/60 shadow-sm">
-                          {totalVolume.toLocaleString('id-ID', { maximumFractionDigits: 4 })} {totalUnit}
-                        </div>
-                      </div>
-                    );
-                  })()}
                 </>
               )}
             </div>
