@@ -775,135 +775,111 @@ export default function App() {
               </div>
             </div>
 
-            <div className="overflow-x-auto flex-1">
+            <div className="flex-1 p-6 flex flex-col gap-3 overflow-y-auto">
               {filteredHistory.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-neutral-400 py-12">
                   <FileSpreadsheet className="w-12 h-12 mb-3 opacity-20" />
                   <p>Belum ada riwayat perhitungan.</p>
                 </div>
               ) : (
-                <table className="w-full text-sm text-left text-neutral-600">
-                  <thead className="text-xs text-neutral-700 uppercase bg-white/60 border-b border-white/20 sticky top-0 backdrop-blur-sm">
-                    <tr>
-                      <th scope="col" className="px-6 py-3 whitespace-nowrap">Tanggal</th>
-                      <th scope="col" className="px-6 py-3 min-w-[200px]">Item Pekerjaan</th>
-                      <th scope="col" className="px-6 py-3 text-right min-w-[120px]">Panjang (m)</th>
-                      <th scope="col" className="px-6 py-3 text-right">Lebar (m)</th>
-                      <th scope="col" className="px-6 py-3 text-right">Tinggi (m)</th>
-                      <th scope="col" className="px-6 py-3 text-right text-blue-700 font-bold whitespace-nowrap">Hasil</th>
-                      <th scope="col" className="px-6 py-3 text-center">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <>
+                  <div className="hidden lg:grid grid-cols-12 gap-4 items-center bg-emerald-500/15 backdrop-blur-md border border-emerald-500/20 rounded-xl px-5 py-3 text-xs font-semibold text-emerald-800 uppercase tracking-widest shadow-sm">
+                    <div className="col-span-2">Tanggal</div>
+                    <div className="col-span-3">Item Pekerjaan</div>
+                    <div className="col-span-4 grid grid-cols-3 gap-2 text-right">
+                      <div>P (m)</div>
+                      <div>L (m)</div>
+                      <div>T (m)</div>
+                    </div>
+                    <div className="col-span-2 text-right text-emerald-900 font-bold">Hasil</div>
+                    <div className="col-span-1 text-center">Aksi</div>
+                  </div>
+                  
+                  <div className="space-y-3">
                     {filteredHistory.map((record) => (
-                      <tr key={record.id} className="bg-transparent border-b border-white/10 hover:bg-white/50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap text-xs text-neutral-500 align-top">
-                          {new Date(record.timestamp).toLocaleDateString('id-ID', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </td>
-                        <td className="px-6 py-4 font-medium text-neutral-900 w-full max-w-xs align-top">
-                          <div className="line-clamp-2" title={record.item}>{record.item}</div>
-                        </td>
+                      <div key={record.id} className="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-4 items-start bg-white/70 backdrop-blur-md border border-white/50 hover:bg-white/90 hover:shadow-md transition-all rounded-xl px-5 py-4 shadow-sm group">
                         
-                        <td className="px-6 py-4 text-right align-top">
-                          {record.rows ? record.rows.map((r, idx) => (
-                            <div key={r.id || idx} className={`font-mono text-xs break-words ${idx !== record.rows!.length - 1 ? 'mb-2 pb-2 border-b border-neutral-100' : ''}`}>
-                              {r.panjang}
-                              {r.panjang !== '-' && String(r.panjang).match(/[+\-*/()]/) && (
-                                <span className="text-blue-600 block mt-0.5 font-semibold">= {r.panjangVal?.toLocaleString('id-ID', { maximumFractionDigits: 4 })}</span>
-                              )}
-                            </div>
-                          )) : (
-                            <div className="font-mono text-xs break-words">
-                              {record.panjang}
-                              {record.panjang !== '-' && String(record.panjang).match(/[+\-*/()]/) && (
-                                <span className="text-blue-600 block mt-0.5 font-semibold">= {record.panjangVal?.toLocaleString('id-ID', { maximumFractionDigits: 4 })}</span>
-                              )}
-                            </div>
-                          )}
-                        </td>
-
-                        <td className="px-6 py-4 text-right align-top">
-                          {record.rows ? record.rows.map((r, idx) => (
-                            <div key={r.id || idx} className={`font-mono text-xs break-words ${idx !== record.rows!.length - 1 ? 'mb-2 pb-2 border-b border-neutral-100' : ''}`}>
-                              {r.lebar}
-                              {r.lebar !== '-' && String(r.lebar).match(/[+\-*/()]/) && (
-                                <span className="text-blue-600 block mt-0.5 font-semibold">= {r.lebarVal?.toLocaleString('id-ID', { maximumFractionDigits: 4 })}</span>
-                              )}
-                            </div>
-                          )) : (
-                            <div className="font-mono text-xs break-words">
-                              {record.lebar}
-                              {record.lebar !== '-' && String(record.lebar).match(/[+\-*/()]/) && (
-                                <span className="text-blue-600 block mt-0.5 font-semibold">= {record.lebarVal?.toLocaleString('id-ID', { maximumFractionDigits: 4 })}</span>
-                              )}
-                            </div>
-                          )}
-                        </td>
-
-                        <td className="px-6 py-4 text-right align-top">
-                          {record.rows ? record.rows.map((r, idx) => (
-                            <div key={r.id || idx} className={`font-mono text-xs break-words ${idx !== record.rows!.length - 1 ? 'mb-2 pb-2 border-b border-neutral-100' : ''}`}>
-                              {r.tinggi}
-                              {r.tinggi !== '-' && String(r.tinggi).match(/[+\-*/()]/) && (
-                                <span className="text-blue-600 block mt-0.5 font-semibold">= {r.tinggiVal?.toLocaleString('id-ID', { maximumFractionDigits: 4 })}</span>
-                              )}
-                            </div>
-                          )) : (
-                            <div className="font-mono text-xs break-words">
-                              {record.tinggi}
-                              {record.tinggi !== '-' && String(record.tinggi).match(/[+\-*/()]/) && (
-                                <span className="text-blue-600 block mt-0.5 font-semibold">= {record.tinggiVal?.toLocaleString('id-ID', { maximumFractionDigits: 4 })}</span>
-                              )}
-                            </div>
-                          )}
-                        </td>
-
-                        <td className="px-6 py-4 text-right align-top font-semibold text-blue-700 bg-blue-50/30">
-                          <div className="flex flex-col h-full justify-between gap-2">
-                            {record.rows && record.rows.length > 1 && (
-                              <div className="text-[10px] text-blue-800/60 font-medium">
-                                {record.rows.map((r, i) => (
-                                  <div key={r.id || i} className={i !== record.rows!.length - 1 ? 'mb-2 pb-2 border-b border-blue-200/50' : ''}>
-                                    {r.rowVolume?.toLocaleString('id-ID', { maximumFractionDigits: 4 })} {r.unit || 'm³'}
-                                  </div>
-                                ))}
+                        <div className="col-span-1 lg:col-span-2 text-xs text-neutral-500 font-medium pt-1">
+                          {new Date(record.timestamp).toLocaleDateString('id-ID', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                        
+                        <div className="col-span-1 lg:col-span-3 pt-0.5">
+                          <div className="font-medium text-neutral-900 text-sm leading-snug">{record.item}</div>
+                        </div>
+                        
+                        <div className="col-span-1 lg:col-span-4 flex flex-col gap-2">
+                          {(record.rows || [{
+                             id: 'legacy',
+                             panjang: record.panjang, panjangVal: record.panjangVal,
+                             lebar: record.lebar, lebarVal: record.lebarVal,
+                             tinggi: record.tinggi, tinggiVal: record.tinggiVal
+                          }]).map((r, idx) => (
+                            <div key={r.id || idx} className={`grid grid-cols-3 gap-2 text-right ${idx !== (record.rows?.length || 1) - 1 ? 'pb-2 border-b border-neutral-200/50' : ''}`}>
+                              <div className="font-mono text-xs text-neutral-600 break-words">
+                                {r.panjang}
+                                {r.panjang !== '-' && String(r.panjang).match(/[+\-*/()]/) && (
+                                  <span className="text-emerald-600 block mt-0.5 font-semibold">= {r.panjangVal?.toLocaleString('id-ID', { maximumFractionDigits: 4 })}</span>
+                                )}
                               </div>
-                            )}
-                            <div className={`text-sm font-bold ${record.rows && record.rows.length > 1 ? 'border-t border-blue-200/50 pt-2 mt-auto' : ''}`}>
-                              {record.volume.toLocaleString('id-ID', { maximumFractionDigits: 4 })} {record.unit || 'm³'}
+                              <div className="font-mono text-xs text-neutral-600 break-words">
+                                {r.lebar}
+                                {r.lebar !== '-' && String(r.lebar).match(/[+\-*/()]/) && (
+                                  <span className="text-emerald-600 block mt-0.5 font-semibold">= {r.lebarVal?.toLocaleString('id-ID', { maximumFractionDigits: 4 })}</span>
+                                )}
+                              </div>
+                              <div className="font-mono text-xs text-neutral-600 break-words">
+                                {r.tinggi}
+                                {r.tinggi !== '-' && String(r.tinggi).match(/[+\-*/()]/) && (
+                                  <span className="text-emerald-600 block mt-0.5 font-semibold">= {r.tinggiVal?.toLocaleString('id-ID', { maximumFractionDigits: 4 })}</span>
+                                )}
+                              </div>
                             </div>
+                          ))}
+                        </div>
+
+                        <div className="col-span-1 lg:col-span-2 flex flex-col justify-center h-full items-end text-sm font-bold text-emerald-800 bg-emerald-50/60 p-2 rounded-lg border border-emerald-100 mt-2 lg:mt-0">
+                          {record.rows && record.rows.length > 1 && (
+                            <div className="text-[10px] text-emerald-700/60 font-medium mb-1 w-full text-right">
+                              {record.rows.map((r, i) => (
+                                <div key={r.id || i} className={i !== record.rows!.length - 1 ? 'mb-1 pb-1 border-b border-emerald-100/50' : ''}>
+                                  {r.rowVolume?.toLocaleString('id-ID', { maximumFractionDigits: 4 })} {r.unit || 'm³'}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <div className={`w-full text-right ${record.rows && record.rows.length > 1 ? 'pt-1.5 border-t border-emerald-200/50' : ''}`}>
+                            {record.volume.toLocaleString('id-ID', { maximumFractionDigits: 4 })} {record.unit || 'm³'}
                           </div>
-                        </td>
-                        <td className="px-6 py-4 text-center align-top">
+                        </div>
+
+                        <div className="col-span-1 lg:col-span-1 flex justify-end lg:justify-center items-center h-full mt-2 lg:mt-0">
                           <button
                             onClick={() => handleDelete(record.id)}
-                            className="text-neutral-400 hover:text-rose-600 transition-colors"
+                            className="text-neutral-400 hover:text-rose-600 hover:bg-rose-50 p-2 rounded-lg transition-colors"
                             title="Hapus"
                           >
-                            <Trash2 className="w-4 h-4 mx-auto" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
-                        </td>
-                      </tr>
+                        </div>
+                      </div>
                     ))}
-                  </tbody>
-                  <tfoot className="bg-white/60 border-t border-white/20 sticky bottom-0 text-neutral-900 backdrop-blur-sm">
-                    {(() => {
-                      const uniqueUnits = Array.from(new Set(filteredHistory.map(r => r.unit || 'm³')));
-                      const totalUnit = uniqueUnits.length === 1 && uniqueUnits[0] !== '-' ? uniqueUnits[0] : '';
-                      return (
-                        <tr>
-                          <th colSpan={5} className="px-6 py-4 text-right text-sm font-semibold">
-                            Total Keseluruhan ({filterItem === 'All' ? 'Semua Item' : 'Item Terpilih'}):
-                          </th>
-                          <td className="px-6 py-4 text-right font-bold text-blue-700 whitespace-nowrap bg-blue-50/50">
-                            {totalVolume.toLocaleString('id-ID', { maximumFractionDigits: 4 })} {totalUnit}
-                          </td>
-                          <td></td>
-                        </tr>
-                      );
-                    })()}
-                  </tfoot>
-                </table>
+                  </div>
+
+                  {(() => {
+                    const uniqueUnits = Array.from(new Set(filteredHistory.map(r => r.unit || 'm³')));
+                    const totalUnit = uniqueUnits.length === 1 && uniqueUnits[0] !== '-' ? uniqueUnits[0] : '';
+                    return (
+                      <div className="mt-4 flex flex-col sm:flex-row justify-between items-center bg-emerald-500/15 backdrop-blur-md border border-emerald-500/20 rounded-xl px-6 py-4 text-emerald-950 shadow-sm sticky bottom-0">
+                        <div className="text-sm font-semibold mb-2 sm:mb-0">
+                          Total Keseluruhan ({filterItem === 'All' ? 'Semua Item' : 'Item Terpilih'})
+                        </div>
+                        <div className="text-xl font-bold bg-white/50 px-4 py-1.5 rounded-lg border border-white/60 shadow-sm">
+                          {totalVolume.toLocaleString('id-ID', { maximumFractionDigits: 4 })} {totalUnit}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </>
               )}
             </div>
           </div>
