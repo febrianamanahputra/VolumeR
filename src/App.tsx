@@ -3,6 +3,7 @@ import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { 
   Calculator, 
   Save, 
@@ -15,7 +16,8 @@ import {
   Download,
   Plus,
   X,
-  FileText
+  FileText,
+  GripVertical
 } from 'lucide-react';
 
 const DEFAULT_ITEMS = [
@@ -68,6 +70,7 @@ interface CalculationRecord {
   volume: number;
   unit?: string;
   timestamp: number;
+  isDivider?: boolean;
 }
 
 const evaluateMath = (expr: string): { value: number; error: boolean; empty: boolean } => {
@@ -95,6 +98,22 @@ export default function App() {
   const [history, setHistory] = useState<CalculationRecord[]>([]);
   const [filterItem, setFilterItem] = useState<string>('All');
   const [pekanKe, setPekanKe] = useState<string>('');
+  const [isAddingDivider, setIsAddingDivider] = useState(false);
+  const [newDividerText, setNewDividerText] = useState('');
+
+  const handleDragEnd = (result: any) => {
+    if (!result.destination) return;
+    
+    // Only allow reordering if filter is 'All'
+    if (filterItem !== 'All') return;
+
+    const items = Array.from(history);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    setHistory(items);
+  };
+
 
   useEffect(() => {
     const saved = localStorage.getItem('calc_history');
@@ -217,6 +236,23 @@ export default function App() {
     setHistory(history.filter(record => record.id !== id));
   };
 
+  const submitDivider = () => {
+    if (!newDividerText.trim()) {
+      setIsAddingDivider(false);
+      return;
+    }
+    const newRecord: CalculationRecord = {
+      id: crypto.randomUUID(),
+      item: newDividerText.trim(),
+      volume: 0,
+      timestamp: Date.now(),
+      isDivider: true
+    };
+    setHistory([newRecord, ...history]);
+    setNewDividerText('');
+    setIsAddingDivider(false);
+  };
+
   const clearHistory = () => {
     if (confirm('Apakah Anda yakin ingin menghapus semua riwayat?')) {
       setHistory([]);
@@ -250,7 +286,8 @@ export default function App() {
     ? history 
     : history.filter(h => h.item === filterItem);
 
-  const totalVolume = filteredHistory.reduce((sum, record) => sum + record.volume, 0);
+  const nonDividerHistory = filteredHistory.filter(r => !r.isDivider);
+  const totalVolume = nonDividerHistory.reduce((sum, record) => sum + (record.volume || 0), 0);
 
   const exportToExcel = async () => {
     const workbook = new ExcelJS.Workbook();
@@ -275,6 +312,17 @@ export default function App() {
     let currentRow = 2;
 
     filteredHistory.forEach(record => {
+      if (record.isDivider) {
+        worksheet.addRow([record.item]);
+        worksheet.mergeCells(`A${currentRow}:F${currentRow}`);
+        const dividerRow = worksheet.getRow(currentRow);
+        dividerRow.font = { bold: true, color: { argb: 'FF78350F' } }; // amber-900
+        dividerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+        dividerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFDE68A' } }; // amber-200
+        currentRow++;
+        return;
+      }
+
       const dateStr = new Date(record.timestamp).toLocaleString('id-ID', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
       const startRow = currentRow;
 
@@ -398,6 +446,13 @@ export default function App() {
     const tableData: any[][] = [];
     
     filteredHistory.forEach(record => {
+      if (record.isDivider) {
+        tableData.push([
+          { content: record.item, colSpan: 6, styles: { halign: 'center', fillColor: [253, 230, 138], textColor: [120, 53, 15], fontStyle: 'bold' } }
+        ]);
+        return;
+      }
+
       const dateStr = new Date(record.timestamp).toLocaleString('id-ID', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
       
       if (record.rows && record.rows.length > 0) {
@@ -713,6 +768,14 @@ export default function App() {
                   </button>
                 )}
 
+                <button 
+                  onClick={() => setIsAddingDivider(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
+                >
+                  <Layers className="w-4 h-4" />
+                  Pembatas
+                </button>
+
                 {history.length > 0 && (
                   <button 
                     onClick={clearHistory}
@@ -724,6 +787,32 @@ export default function App() {
                 )}
               </div>
             </div>
+
+            {isAddingDivider && (
+              <div className="px-6 py-3 bg-blue-50/50 border-b border-blue-100 flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Nama Pembatas (Contoh: PEKERJAAN PASANGAN BATA...)"
+                  value={newDividerText}
+                  onChange={(e) => setNewDividerText(e.target.value)}
+                  className="flex-1 bg-white border border-blue-200 text-neutral-800 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2"
+                  autoFocus
+                  onKeyDown={(e) => e.key === 'Enter' && submitDivider()}
+                />
+                <button
+                  onClick={submitDivider}
+                  className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
+                >
+                  Simpan
+                </button>
+                <button
+                  onClick={() => setIsAddingDivider(false)}
+                  className="px-4 py-2 bg-white border border-neutral-200 text-neutral-600 text-sm font-medium rounded-lg hover:bg-neutral-50"
+                >
+                  Batal
+                </button>
+              </div>
+            )}
 
             <div className="flex-1 p-6 flex flex-col gap-3 overflow-y-auto">
               {filteredHistory.length === 0 ? (
@@ -745,75 +834,122 @@ export default function App() {
                     <div className="col-span-1 text-center">Aksi</div>
                   </div>
                   
-                  <div className="space-y-3">
-                    {filteredHistory.map((record) => (
-                      <div key={record.id} className="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-4 items-start bg-white/70 backdrop-blur-md border border-white/50 hover:bg-white/90 hover:shadow-md transition-all rounded-xl px-5 py-4 shadow-sm group">
-                        
-                        <div className="col-span-1 lg:col-span-2 text-xs text-neutral-500 font-medium pt-1">
-                          {new Date(record.timestamp).toLocaleDateString('id-ID', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                        
-                        <div className="col-span-1 lg:col-span-3 pt-0.5">
-                          <div className="font-medium text-neutral-900 text-sm leading-snug">{record.item}</div>
-                        </div>
-                        
-                        <div className="col-span-1 lg:col-span-4 flex flex-col gap-2">
-                          {(record.rows || [{
-                             id: 'legacy',
-                             panjang: record.panjang, panjangVal: record.panjangVal,
-                             lebar: record.lebar, lebarVal: record.lebarVal,
-                             tinggi: record.tinggi, tinggiVal: record.tinggiVal
-                          }]).map((r, idx) => (
-                            <div key={r.id || idx} className={`grid grid-cols-3 gap-2 text-right ${idx !== (record.rows?.length || 1) - 1 ? 'pb-2 border-b border-neutral-200/50' : ''}`}>
-                              <div className="font-mono text-xs text-neutral-600 break-words">
-                                {r.panjang}
-                                {r.panjang !== '-' && String(r.panjang).match(/[+\-*/()]/) && (
-                                  <span className="text-emerald-600 block mt-0.5 font-semibold">= {r.panjangVal?.toLocaleString('id-ID', { maximumFractionDigits: 4 })}</span>
-                                )}
-                              </div>
-                              <div className="font-mono text-xs text-neutral-600 break-words">
-                                {r.lebar}
-                                {r.lebar !== '-' && String(r.lebar).match(/[+\-*/()]/) && (
-                                  <span className="text-emerald-600 block mt-0.5 font-semibold">= {r.lebarVal?.toLocaleString('id-ID', { maximumFractionDigits: 4 })}</span>
-                                )}
-                              </div>
-                              <div className="font-mono text-xs text-neutral-600 break-words">
-                                {r.tinggi}
-                                {r.tinggi !== '-' && String(r.tinggi).match(/[+\-*/()]/) && (
-                                  <span className="text-emerald-600 block mt-0.5 font-semibold">= {r.tinggiVal?.toLocaleString('id-ID', { maximumFractionDigits: 4 })}</span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                  <DragDropContext onDragEnd={handleDragEnd}>
+                    <Droppable droppableId="history-list">
+                      {(provided) => (
+                        <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-3">
+                          {filteredHistory.map((record, index) => (
+                            <Draggable key={record.id} draggableId={record.id} index={index} isDragDisabled={filterItem !== 'All'}>
+                              {(provided, snapshot) => (
+                                <div 
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  style={{
+                                    ...provided.draggableProps.style,
+                                    opacity: snapshot.isDragging ? 0.8 : 1
+                                  }}
+                                  className={`grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-4 items-start ${record.isDivider ? 'bg-amber-100/80 border-amber-200' : 'bg-white/70 border-white/50 hover:bg-white/90'} backdrop-blur-md border hover:shadow-md transition-all rounded-xl px-5 py-4 shadow-sm group relative`}
+                                >
+                                  {/* Drag Handle */}
+                                  {filterItem === 'All' && (
+                                    <div 
+                                      {...provided.dragHandleProps}
+                                      className="absolute left-1 top-1/2 -translate-y-1/2 p-1 text-neutral-400 hover:text-neutral-600 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                      <GripVertical className="w-4 h-4" />
+                                    </div>
+                                  )}
+                                  
+                                  {record.isDivider ? (
+                                     <>
+                                      <div className="col-span-1 lg:col-span-11 flex items-center justify-center font-bold text-lg text-amber-900 tracking-wide text-center">
+                                        {record.item}
+                                      </div>
+                                      <div className="col-span-1 lg:col-span-1 flex justify-end lg:justify-center items-center h-full">
+                                        <button
+                                          onClick={() => handleDelete(record.id)}
+                                          className="text-neutral-400 hover:text-rose-600 hover:bg-rose-50 p-2 rounded-lg transition-colors"
+                                          title="Hapus"
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                     </>
+                                  ) : (
+                                    <>
+                                      <div className="col-span-1 lg:col-span-2 text-xs text-neutral-500 font-medium pt-1 pl-4">
+                                        {new Date(record.timestamp).toLocaleDateString('id-ID', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                      </div>
+                                      
+                                      <div className="col-span-1 lg:col-span-3 pt-0.5">
+                                        <div className="font-medium text-neutral-900 text-sm leading-snug">{record.item}</div>
+                                      </div>
+                                      
+                                      <div className="col-span-1 lg:col-span-4 flex flex-col gap-2">
+                                        {(record.rows || [{
+                                          id: 'legacy',
+                                          panjang: record.panjang, panjangVal: record.panjangVal,
+                                          lebar: record.lebar, lebarVal: record.lebarVal,
+                                          tinggi: record.tinggi, tinggiVal: record.tinggiVal
+                                        }]).map((r, idx) => (
+                                          <div key={r.id || idx} className={`grid grid-cols-3 gap-2 text-right ${idx !== (record.rows?.length || 1) - 1 ? 'pb-2 border-b border-neutral-200/50' : ''}`}>
+                                            <div className="font-mono text-xs text-neutral-600 break-words">
+                                              {r.panjang}
+                                              {r.panjang !== '-' && String(r.panjang).match(/[+\-*/()]/) && (
+                                                <span className="text-emerald-600 block mt-0.5 font-semibold">= {r.panjangVal?.toLocaleString('id-ID', { maximumFractionDigits: 4 })}</span>
+                                              )}
+                                            </div>
+                                            <div className="font-mono text-xs text-neutral-600 break-words">
+                                              {r.lebar}
+                                              {r.lebar !== '-' && String(r.lebar).match(/[+\-*/()]/) && (
+                                                <span className="text-emerald-600 block mt-0.5 font-semibold">= {r.lebarVal?.toLocaleString('id-ID', { maximumFractionDigits: 4 })}</span>
+                                              )}
+                                            </div>
+                                            <div className="font-mono text-xs text-neutral-600 break-words">
+                                              {r.tinggi}
+                                              {r.tinggi !== '-' && String(r.tinggi).match(/[+\-*/()]/) && (
+                                                <span className="text-emerald-600 block mt-0.5 font-semibold">= {r.tinggiVal?.toLocaleString('id-ID', { maximumFractionDigits: 4 })}</span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
 
-                        <div className="col-span-1 lg:col-span-2 flex flex-col justify-center h-full items-end text-sm font-bold text-emerald-800 bg-emerald-50/60 p-2 rounded-lg border border-emerald-100 mt-2 lg:mt-0">
-                          {record.rows && record.rows.length > 1 && (
-                            <div className="text-[10px] text-emerald-700/60 font-medium mb-1 w-full text-right">
-                              {record.rows.map((r, i) => (
-                                <div key={r.id || i} className={i !== record.rows!.length - 1 ? 'mb-1 pb-1 border-b border-emerald-100/50' : ''}>
-                                  {r.rowVolume?.toLocaleString('id-ID', { maximumFractionDigits: 4 })} {r.unit || 'm³'}
+                                      <div className="col-span-1 lg:col-span-2 flex flex-col justify-center h-full items-end text-sm font-bold text-emerald-800 bg-emerald-50/60 p-2 rounded-lg border border-emerald-100 mt-2 lg:mt-0">
+                                        {record.rows && record.rows.length > 1 && (
+                                          <div className="text-[10px] text-emerald-700/60 font-medium mb-1 w-full text-right">
+                                            {record.rows.map((r, i) => (
+                                              <div key={r.id || i} className={i !== record.rows!.length - 1 ? 'mb-1 pb-1 border-b border-emerald-100/50' : ''}>
+                                                {r.rowVolume?.toLocaleString('id-ID', { maximumFractionDigits: 4 })} {r.unit || 'm³'}
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                        <div className={`w-full text-right ${record.rows && record.rows.length > 1 ? 'pt-1.5 border-t border-emerald-200/50' : ''}`}>
+                                          {(record.volume || 0).toLocaleString('id-ID', { maximumFractionDigits: 4 })} {record.unit || 'm³'}
+                                        </div>
+                                      </div>
+
+                                      <div className="col-span-1 lg:col-span-1 flex justify-end lg:justify-center items-center h-full mt-2 lg:mt-0">
+                                        <button
+                                          onClick={() => handleDelete(record.id)}
+                                          className="text-neutral-400 hover:text-rose-600 hover:bg-rose-50 p-2 rounded-lg transition-colors"
+                                          title="Hapus"
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                    </>
+                                  )}
                                 </div>
-                              ))}
-                            </div>
-                          )}
-                          <div className={`w-full text-right ${record.rows && record.rows.length > 1 ? 'pt-1.5 border-t border-emerald-200/50' : ''}`}>
-                            {record.volume.toLocaleString('id-ID', { maximumFractionDigits: 4 })} {record.unit || 'm³'}
-                          </div>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
                         </div>
-
-                        <div className="col-span-1 lg:col-span-1 flex justify-end lg:justify-center items-center h-full mt-2 lg:mt-0">
-                          <button
-                            onClick={() => handleDelete(record.id)}
-                            className="text-neutral-400 hover:text-rose-600 hover:bg-rose-50 p-2 rounded-lg transition-colors"
-                            title="Hapus"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      )}
+                    </Droppable>
+                  </DragDropContext>
                 </>
               )}
             </div>
